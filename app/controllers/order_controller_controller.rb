@@ -50,4 +50,42 @@ class OrderControllerController < ApplicationController
             @order.total = 0.00
         end
     end
+    
+    # GET /orders/id=:id
+    def getById
+        # Get the ID from the params
+        @id = params[:id]
+        # Check to make sure the id is not null
+        if !@id.nil?
+            # Search db for the order
+            @order = Order.find_by(id: @id)
+            # If the order is found
+            if !@order.nil?
+                # Return it along with a status of 200
+                render json: @order.to_json, status: 200
+            else
+                # If it could not be found
+                head 404
+            end
+            
+        else
+            # There was no id value passed.
+            head 404
+        end
+        
+    end
+    
+    # GET /orders?customerId=nnn
+    # GET /orders?email=nn@nnn
+    def get
+        # Get the cusomter id from the params
+        @customerId = params[:id]
+        # Get the customer email from the params
+        @customerEmail = params[:email]
+        # Check to make sure the id is not null
+        if !@customerId.nil? 
+            @order = Order.find_by(customerId: @customerId)
+            # Check to make sure the orders are found.
+        end
+    end
 end
