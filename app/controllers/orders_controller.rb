@@ -1,4 +1,10 @@
-class OrderControllerController < ApplicationController
+require 'httparty'
+
+class OrdersController < ApplicationController
+    include HTTParty
+    
+    base_uri "http://localhost:8080"
+    format :json
     
     # Create POST /orders
     # Request body contains JSON data with the itemId
@@ -84,8 +90,16 @@ class OrderControllerController < ApplicationController
         @customerEmail = params[:email]
         # Check to make sure the id is not null
         if !@customerId.nil? 
-            @order = Order.find_by(customerId: @customerId)
+            @orders = Order.where(customerId: @customerId)
             # Check to make sure the orders are found.
+            if !@orders.nil?
+                render json: @orders.to_json, status: 200
+            end
+        elsif !@customerEmail.nil?
+            # Use HTTParty here to find the customer id from the customer email.
+            # something like: 
+            # findId(customerEmail)
+            # set it to customerId
         end
     end
 end
