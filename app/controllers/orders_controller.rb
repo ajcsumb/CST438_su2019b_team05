@@ -103,25 +103,30 @@ class OrdersController < ApplicationController
     
     # GET /orders?customerId=nnn
     # GET /orders?email=nn@nnn
-    # def get
-    #     # Get the cusomter id from the params
-    #     @customerId = params[:id]
-    #     # Get the customer email from the params
-    #     @customerEmail = params[:email]
-    #     # Check to make sure the id is not null
-    #     if !@customerId.nil? 
-    #         @orders = Order.where(customerId: @customerId)
-    #         # Check to make sure the orders are found.
-    #         if !@orders.nil?
-    #             render json: @orders.to_json, status: 200
-    #         end
-    #     elsif !@customerEmail.nil?
-    #         # Use HTTParty here to find the customer id from the customer email.
-    #         # something like: 
-    #         # findId(customerEmail)
-    #         # set it to customerId
-    #     end
-    # end
+    def get
+        # Get the cusomter id from the params
+        @customerId = params[:customerId]
+        # Get the customer email from the params
+        @customerEmail = params[:email]
+        # Check to make sure the id is not null
+        if !@customerId.nil? 
+            @orders = Order.where(customerId: @customerId)
+            # Check to make sure the orders are found.
+            if !@orders.nil?
+                render json: @orders.to_json, status: 200
+            end
+        elsif !@customerEmail.nil?
+            response = CustomerService.getCustomerByEmail(@customerEmail)
+            # Was using the following for debugging
+            puts "This is the status code in the Orders Controller: " + response.code.to_s
+            # Assign the customerId back over to the order.
+            id = response["id"]
+            @orders = Order.where(customerId: id)
+            if !@orders.nil?
+                render json: @orders.to_json, status: 200
+            end
+        end
+    end
 end
 
 class CustomerService 

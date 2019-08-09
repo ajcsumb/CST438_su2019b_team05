@@ -3,4 +3,5 @@ Rails.application.routes.draw do
   
   get '/orders/:id' => 'orders#getById'
   post '/orders' => 'orders#create'
+  get '/orders' => 'orders#get'
 end
