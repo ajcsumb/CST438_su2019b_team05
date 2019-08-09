@@ -1,11 +1,9 @@
 require 'httparty'
 
 class OrdersController < ApplicationController
-    include HTTParty
-    
-    base_uri "http://localhost:8080"
-    format :json
-    
+    skip_before_action :verify_authenticity_token
+
+
     # Create POST /orders
     # Request body contains JSON data with the itemId
     # and email of customer
@@ -13,11 +11,22 @@ class OrdersController < ApplicationController
         # Create the order 
         @order = Order.new
         @order.itemId = params[:itemId]
+        @order.description = ""
+        @order.price = ""
+        @order.award = 0
+        @order.total = 0
+        @email = params[:email]
         
         # Invoke the customer service to retrieve the customer id using the customers
         # email address
         # Something like:
         # @order.customerId = getCustomerId(params[:email])
+        response = CustomerService.getCustomerByEmail(@email)
+        # Was using the following for debugging
+        puts "This is the status code in the Orders Controller: " + response.code.to_s
+        # Assign the customerId back over to the order.
+        @order.customerId = response["id"]
+        
         
         # All other data is optional
         
@@ -46,7 +55,7 @@ class OrdersController < ApplicationController
         end
         
         # Total
-        if params[:award] == 0 || @orders.award == 0
+        if params[:award] == 0 || @order.award == 0
             # Assign it to the order
             @order.total = @order.price
         elsif params.has_key?(:total)
@@ -54,6 +63,17 @@ class OrdersController < ApplicationController
             @order.total = params[:total]
         else
             @order.total = 0.00
+        end
+        
+        # Save the order
+        @order.save
+        
+        # Check to see if it was successful
+        if @order.valid?
+            render json: @order.to_json, status: 201
+        else
+            # The order was not successful
+            render json: @order.to_json, status: 400
         end
     end
     
@@ -83,23 +103,40 @@ class OrdersController < ApplicationController
     
     # GET /orders?customerId=nnn
     # GET /orders?email=nn@nnn
-    def get
-        # Get the cusomter id from the params
-        @customerId = params[:id]
-        # Get the customer email from the params
-        @customerEmail = params[:email]
-        # Check to make sure the id is not null
-        if !@customerId.nil? 
-            @orders = Order.where(customerId: @customerId)
-            # Check to make sure the orders are found.
-            if !@orders.nil?
-                render json: @orders.to_json, status: 200
-            end
-        elsif !@customerEmail.nil?
-            # Use HTTParty here to find the customer id from the customer email.
-            # something like: 
-            # findId(customerEmail)
-            # set it to customerId
-        end
-    end
+    # def get
+    #     # Get the cusomter id from the params
+    #     @customerId = params[:id]
+    #     # Get the customer email from the params
+    #     @customerEmail = params[:email]
+    #     # Check to make sure the id is not null
+    #     if !@customerId.nil? 
+    #         @orders = Order.where(customerId: @customerId)
+    #         # Check to make sure the orders are found.
+    #         if !@orders.nil?
+    #             render json: @orders.to_json, status: 200
+    #         end
+    #     elsif !@customerEmail.nil?
+    #         # Use HTTParty here to find the customer id from the customer email.
+    #         # something like: 
+    #         # findId(customerEmail)
+    #         # set it to customerId
+    #     end
+    # end
 end
+
+class CustomerService 
+    include HTTParty
+        
+    base_uri "http://localhost:8081"
+    format :json
+    
+    def self.getCustomerByEmail(email)
+        puts "Getting the customer with the email of #{email}"
+        get "/customers?email=#{email}"
+    end
+    
+    # def postOrderToCustomer(order)
+         
+    # end
+end
+
