@@ -1,5 +1,3 @@
-require 'httparty'
-
 class OrdersController < ApplicationController
     skip_before_action :verify_authenticity_token
 
@@ -10,71 +8,49 @@ class OrdersController < ApplicationController
     def create
         # Create the order 
         @order = Order.new
-        @order.itemId = params[:itemId]
-        @order.description = ""
-        @order.price = ""
-        @order.award = 0
-        @order.total = 0
         @email = params[:email]
         
         # Invoke the customer service to retrieve the customer id using the customers
-        # email address
-        # Something like:
-        # @order.customerId = getCustomerId(params[:email])
-        response = CustomerService.getCustomerByEmail(@email)
-        # Was using the following for debugging
-        puts "This is the status code in the Orders Controller: " + response.code.to_s
-        # Assign the customerId back over to the order.
-        @order.customerId = response["id"]
+        customerCode, customer = Customer_Service.getCustomerByEmail(@email)
         
-        
-        # All other data is optional
-        
-        # Description
-        if params.has_key?(:description)
-            # Assign it to the order
-            @order.description = params[:description]
-        else
-            @order.description = ""
+        # Check to make sure the customer can be found
+        if customerCode != 200
+            render json: { error: "Customer could not be found. ", status: 400 }
+            return
         end
         
-        # Award
-        if params.has_key?(:award)
-            # Assign it to the order
-            @order.award = params[:award]
-        else
-            @order.award = 0.00
+        # Invoke the item service to retrieve the item information
+        orderCode, item = Item_Service.getItemById(params[:itemId])
+        # Check to see if the item can be found
+        if orderCode != 200
+            render json: { error: "Item could not be found", status: 400 }
+            return
+        end
+        # Check to see if the item is in stock
+        if item[:stockQty] <= 0
+            render json: { error: "Item is out of stock", status: 400 }
+            return
         end
         
-        # Price
-        if params.has_key?(:price)
-            # Assign it to the order
-            @order.price = params[:price]
+        
+        # Construct the object
+        @order.itemId = params[:itemId]
+        @order.description = item[:description]
+        @order.customerId = customer[:id]
+        @order.price = item[:price]
+        @order.award = customer[:award]
+        @order.total = @order.price - @order.award
+        
+        # Check to see if the order can be saved
+        if @order.save 
+            # Save the order to the customer and save it to the item
+            tempCode = Customer_Service.postOrder(@order)
+            tempCode = Item_Service.postOrder(@order)
+            render json: @order, status: 201
         else
-            @order.price = 0.00
+            render json: @order.errors, status: 400
         end
         
-        # Total
-        if params[:award] == 0 || @order.award == 0
-            # Assign it to the order
-            @order.total = @order.price
-        elsif params.has_key?(:total)
-            # Assign it to the order
-            @order.total = params[:total]
-        else
-            @order.total = 0.00
-        end
-        
-        # Save the order
-        @order.save
-        
-        # Check to see if it was successful
-        if @order.valid?
-            render json: @order.to_json, status: 201
-        else
-            # The order was not successful
-            render json: @order.to_json, status: 400
-        end
     end
     
     # GET /orders/id=:id
@@ -116,11 +92,15 @@ class OrdersController < ApplicationController
                 render json: @orders.to_json, status: 200
             end
         elsif !@customerEmail.nil?
-            response = CustomerService.getCustomerByEmail(@customerEmail)
-            # Was using the following for debugging
-            puts "This is the status code in the Orders Controller: " + response.code.to_s
-            # Assign the customerId back over to the order.
-            id = response["id"]
+            customerCode, customer = Customer_Service.getCustomerByEmail(@customerEmail)
+            
+            # Check to make sure the customer can be found
+            if customerCode != 200
+                render json: { error: "Customer could not be found. ", status: 400 }
+                return
+            end
+            
+            id = customer[:id]
             @orders = Order.where(customerId: id)
             if !@orders.nil?
                 render json: @orders.to_json, status: 200
@@ -128,20 +108,3 @@ class OrdersController < ApplicationController
         end
     end
 end
-
-class CustomerService 
-    include HTTParty
-        
-    base_uri "http://localhost:8081"
-    format :json
-    
-    def self.getCustomerByEmail(email)
-        puts "Getting the customer with the email of #{email}"
-        get "/customers?email=#{email}"
-    end
-    
-    # def postOrderToCustomer(order)
-         
-    # end
-end
-
