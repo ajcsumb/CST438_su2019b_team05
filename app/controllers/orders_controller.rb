@@ -42,7 +42,7 @@ class OrdersController < ApplicationController
         @order.total = @order.price - @order.award
         
         # Check to see if the order can be saved
-        if @order.save 
+        if @order.save
             # Save the order to the customer and save it to the item
             tempCode = Customer_Service.postOrder(@order)
             tempCode = Item_Service.postOrder(@order)
