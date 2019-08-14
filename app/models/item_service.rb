@@ -18,7 +18,9 @@ include HTTParty
         headers: @headersAccept
         
         status = response.code
-        item = JSON.parse response.body, symbolize_names: true
+        if status == 200
+            item = JSON.parse response.body, symbolize_names: true
+        end
         
         return status, item
     end
@@ -43,6 +45,6 @@ include HTTParty
     end
     
     def self.getItem(id)
-        get "items?=#{id}"
+        get "chickensitems?id=#{id}"
     end
 end
